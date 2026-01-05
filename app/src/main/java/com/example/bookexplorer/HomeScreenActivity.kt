@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.google.accompanist.swiperefresh.SwipeRefresh
 
 class HomeScreenActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -121,54 +123,62 @@ fun HomeScreen(
                     }
                 }
                 else -> {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(padding),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(books) { book ->
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { onBookClick(book) },
-                                elevation = CardDefaults.cardElevation(4.dp)
-                            ) {
-                                Row(
+                    PullToRefreshBox(
+                        isRefreshing = isLoading,
+                        onRefresh = { viewModel.loadBooks() }
+                    )
+                    {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(padding),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(books) { book ->
+                                Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(12.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                        .clickable { onBookClick(book) },
+                                    elevation = CardDefaults.cardElevation(4.dp)
                                 ) {
-                                    if (book.coverUrl != null) {
-                                        BookCover(url = book.coverUrl!!)
-                                    } else {
-                                        Box(
-                                            modifier = Modifier
-                                                .width(80.dp)
-                                                .height(120.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text("Brak okładki")
-                                        }
-                                    }
-
-                                    Column(
-                                        modifier = Modifier.weight(1f),
-                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
-                                        Text(
-                                            text = book.title,
-                                            style = MaterialTheme.typography.titleMedium,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Text(
-                                            text = book.authors.stream().map{ author -> author.name }.toList().joinToString(),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                                        if (book.coverUrl != null) {
+                                            BookCover(url = book.coverUrl!!)
+                                        } else {
+                                            Box(
+                                                modifier = Modifier
+                                                    .width(80.dp)
+                                                    .height(120.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text("Brak okładki")
+                                            }
+                                        }
+
+                                        Column(
+                                            modifier = Modifier.weight(1f),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Text(
+                                                text = book.title,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Text(
+                                                text = book.authors.stream()
+                                                    .map { author -> author.name }.toList()
+                                                    .joinToString(),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
                                     }
                                 }
                             }
