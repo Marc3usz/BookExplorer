@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.google.accompanist.swiperefresh.SwipeRefresh
 
 class HomeScreenActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -148,8 +147,9 @@ fun HomeScreen(
                                             .padding(12.dp),
                                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
-                                        if (book.coverUrl != null) {
-                                            BookCover(url = book.coverUrl!!)
+                                        val coverUrl = book.getMediumCover()
+                                        if (coverUrl != null) {
+                                            BookCover(url = coverUrl)
                                         } else {
                                             Box(
                                                 modifier = Modifier
@@ -191,7 +191,7 @@ fun HomeScreen(
 }
 
 @Composable
-fun BookCover(url: String) {
+fun BookCover(url: String?) {
     var isLoading by remember { mutableStateOf(true) }
 
     Box(

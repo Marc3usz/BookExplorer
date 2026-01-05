@@ -14,10 +14,16 @@ data class Book(
     val authors: List<Author>,
     @SerializedName("cover_id")
     val coverId: Int?,
-    var coverUrl: String?,
     @SerializedName("first_publish_year")
     val firstPublishYear: Int
-)
+) {
+    fun getMediumCover(): String? {
+        return if (coverId != null) "https://covers.openlibrary.org/b/id/$coverId-M.jpg" else null
+    }
+    fun getLargeCover(): String? {
+        return if (coverId != null) "https://covers.openlibrary.org/b/id/$coverId-L.jpg" else null
+    }
+}
 
 data class Author(
     @SerializedName("name")

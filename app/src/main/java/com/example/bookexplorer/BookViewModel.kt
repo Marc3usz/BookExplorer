@@ -6,7 +6,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class BookViewModel : ViewModel() {
+class BookViewModel(
+    private val repository: BookRepository = BookRepositoryImpl(Api.service)
+) : ViewModel() {
+
     private val _books = MutableStateFlow<List<Book>>(emptyList())
     val books: StateFlow<List<Book>> = _books
 
@@ -24,23 +27,16 @@ class BookViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
-            try {
-                val response = Api.service.getFictionBooks(limit = 20)
-                _books.value = response.books.map { book -> 
-                    val coverId = book.coverId
-                    Book(
-                        title = book.title,
-                        authors = book.authors,
-                        coverId = coverId,
-                        coverUrl = "https://covers.openlibrary.org/b/id/$coverId-M.jpg",
-                        firstPublishYear = book.firstPublishYear
-                    )
+
+            repository.getFictionBooks(limit = 20)
+                .onSuccess { bookList ->
+                    _books.value = bookList
+                    _isLoading.value = false
                 }
-                _isLoading.value = false
-            } catch (e: Exception) {
-                _errorMessage.value = e.message ?: "Wystąpił błąd"
-                _isLoading.value = false
-            }
+                .onFailure { exception ->
+                    _errorMessage.value = exception.message ?: "Wystąpił błąd"
+                    _isLoading.value = false
+                }
         }
     }
 }
