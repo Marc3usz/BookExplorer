@@ -8,6 +8,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -161,7 +162,24 @@ fun HomeScreen(
 ) {
     val books by viewModel.books.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val isLoadingMore by viewModel.isLoadingMore.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(books.size, isLoading, isLoadingMore) {
+        snapshotFlow {
+            listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+        }.collect { lastVisibleIndex ->
+            if (lastVisibleIndex != null &&
+                books.isNotEmpty() &&
+                lastVisibleIndex >= books.size - 3 &&
+                !isLoading &&
+                !isLoadingMore) {
+                viewModel.loadMoreBooks()
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -184,7 +202,7 @@ fun HomeScreen(
                     CircularProgressIndicator()
                 }
             }
-            errorMessage != null -> {
+            errorMessage != null && books.isEmpty() -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -241,6 +259,7 @@ fun HomeScreen(
                     onRefresh = { viewModel.loadBooks() }
                 ) {
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(padding),
@@ -292,6 +311,19 @@ fun HomeScreen(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
+                                }
+                            }
+                        }
+
+                        if (isLoadingMore) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator()
                                 }
                             }
                         }

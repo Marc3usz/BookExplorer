@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit
 
 interface OpenLibraryApi {
     @GET("subjects/fiction.json")
-    suspend fun getFictionBooks(@Query("limit") limit: Int = 20): OpenLibraryResponse
+    suspend fun getFictionBooks(@Query("limit") limit: Int = 20, @Query("offset") page: Int = 0): OpenLibraryResponse
     @GET("{key}.json")
     suspend fun getFictionBookByKey(@Path("key") key: String): BookDetailed
     @GET("{key}.json")

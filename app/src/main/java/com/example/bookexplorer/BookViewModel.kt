@@ -17,8 +17,14 @@ class BookViewModel(
     private val _isLoading = MutableStateFlow(true)
     val isLoading: StateFlow<Boolean> = _isLoading
 
+    private val _isLoadingMore = MutableStateFlow(false)
+    val isLoadingMore: StateFlow<Boolean> = _isLoadingMore
+
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
+
+    private var currentPage = 1
+    private var canLoadMore = true
 
     init {
         loadBooks()
@@ -28,15 +34,48 @@ class BookViewModel(
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
+            currentPage = 1
+            canLoadMore = true
 
-            repository.getFictionBooks(limit = 20)
+            repository.getFictionBooks(limit = 20, page = 1)
                 .onSuccess { bookList ->
                     _books.value = bookList
                     _isLoading.value = false
+                    canLoadMore = bookList.isNotEmpty()
                 }
                 .onFailure { exception ->
                     _errorMessage.value = exception.message ?: "Wystąpił błąd"
                     _isLoading.value = false
+                }
+        }
+    }
+
+    fun loadMoreBooks() {
+        println("loadMoreBooks called - isLoadingMore: ${_isLoadingMore.value}, isLoading: ${_isLoading.value}, canLoadMore: $canLoadMore, currentPage: $currentPage")
+
+        if (_isLoadingMore.value || _isLoading.value || !canLoadMore) return
+
+        viewModelScope.launch {
+            _isLoadingMore.value = true
+            val nextPage = currentPage + 1
+            println("Fetching page: $nextPage")
+
+            repository.getFictionBooks(limit = 20, page = nextPage)
+                .onSuccess { bookList ->
+                    println("Received ${bookList.size} books for page $nextPage")
+                    if (bookList.isEmpty()) {
+                        canLoadMore = false
+                    } else {
+                        currentPage = nextPage
+                        _books.value = _books.value + bookList
+                        println("Total books now: ${_books.value.size}")
+                    }
+                    _isLoadingMore.value = false
+                }
+                .onFailure { exception ->
+                    println("Error loading more books: ${exception.message}")
+                    _errorMessage.value = exception.message ?: "Wystąpił błąd"
+                    _isLoadingMore.value = false
                 }
         }
     }
@@ -79,7 +118,6 @@ class BookDetailViewModel(
 
             for (author in authorKeys) {
                 if (!_isLoading.value) break
-
 
                 if (author.type.key == "/type/author_role") {
                     repository.getAuthorByKey(author.author.key)
