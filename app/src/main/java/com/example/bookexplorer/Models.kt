@@ -57,6 +57,10 @@ data class BookDetailed(
         val coverId = covers.firstOrNull()
         return if (coverId != null) "https://covers.openlibrary.org/b/id/$coverId-L.jpg" else null
     }
+    fun getMediumCover(): String? {
+        val coverId = covers.firstOrNull()
+        return if (coverId != null) "https://covers.openlibrary.org/b/id/$coverId-M.jpg" else null
+    }
 }
 
 data class Author(

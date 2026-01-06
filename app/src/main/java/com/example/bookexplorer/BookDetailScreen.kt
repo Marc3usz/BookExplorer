@@ -9,12 +9,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -23,11 +30,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 
 
 @Composable
@@ -38,13 +48,19 @@ fun BookDetailScreen(
     onNavigateBack: () -> Unit,
     viewModel: BookDetailViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+    val favoritesManager = remember { FavoritesManager(context) }
+    val scope = rememberCoroutineScope()
+
     val book by viewModel.book.collectAsState()
     val authors by viewModel.authors.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val isFavorite by favoritesManager.favoritesFlow.collectAsState(initial = emptySet())
+
+    val fullKey = if (bookKey.startsWith("/works/")) bookKey else "/works/$bookKey"
 
     LaunchedEffect(bookKey) {
-        val fullKey = "/works/$bookKey"
         viewModel.loadBookDetailed(fullKey)
     }
 
@@ -78,31 +94,61 @@ fun BookDetailScreen(
                         .padding(padding),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.padding(16.dp)
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        ),
+                        elevation = CardDefaults.cardElevation(8.dp)
                     ) {
-                        Text(
-                            text = "Błąd: $errorMessage",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Button(onClick = {
-                            val fullKey = if (bookKey.startsWith("/works/")) bookKey else "/works/$bookKey"
-                            viewModel.loadBookDetailed(fullKey)
-                        }) {
-                            Text("Spróbuj ponownie")
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                text = "Ups! Coś poszło nie tak",
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                text = errorMessage ?: "Nieznany błąd",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Button(
+                                onClick = { viewModel.loadBookDetailed(bookKey) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Text("Spróbuj ponownie")
+                            }
                         }
                     }
                 }
             }
-
             book != null -> {
                 BookDetailContent(
                     book = book,
                     authors = authors,
-                    padding = padding
+                    padding = padding,
+                    isFavorite = isFavorite.contains(fullKey),
+                    onToggleFavorite = {
+                        scope.launch {
+                            favoritesManager.toggleFavorite(fullKey)
+                        }
+                    }
                 )
             }
         }
@@ -113,7 +159,9 @@ fun BookDetailScreen(
 private fun BookDetailContent(
     book: BookDetailed?,
     authors: List<AuthorDetailedResolvedAuthor>,
-    padding: PaddingValues
+    padding: PaddingValues,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit
 ) {
     book?.let { bookData ->
         LazyColumn(
@@ -124,7 +172,11 @@ private fun BookDetailContent(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                BookHeaderSection(book = bookData)
+                BookHeaderSection(
+                    book = bookData,
+                    isFavorite = isFavorite,
+                    onToggleFavorite = onToggleFavorite
+                )
             }
 
             if (authors.isNotEmpty()) {
@@ -143,7 +195,11 @@ private fun BookDetailContent(
 }
 
 @Composable
-private fun BookHeaderSection(book: BookDetailed) {
+private fun BookHeaderSection(
+    book: BookDetailed,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -181,11 +237,29 @@ private fun BookHeaderSection(book: BookDetailed) {
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                text = book.title,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Text(
+                    text = book.title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+
+                IconButton(
+                    onClick = onToggleFavorite,
+                    modifier = Modifier.padding(0.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = if (isFavorite) "Usuń z ulubionych" else "Dodaj do ulubionych",
+                        tint = if (isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
 
             book.publishDate?.let { publishDate ->
                 Text(

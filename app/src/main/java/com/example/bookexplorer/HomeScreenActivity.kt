@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -59,6 +60,9 @@ fun BookExplorerApp() {
                     onBookClick = { book ->
                         val bookKey = book.key.removePrefix("/works/")
                         navController.navigate("bookDetail/$bookKey")
+                    },
+                    onNavigateToFavorites = {
+                        navController.navigate("favorites")
                     }
                 )
             }
@@ -75,6 +79,18 @@ fun BookExplorerApp() {
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
+
+            composable("favorites") {
+                FavoritesScreen(
+                    isDarkTheme = isDarkTheme,
+                    onThemeToggle = { isDarkTheme = !isDarkTheme },
+                    onNavigateBack = { navController.popBackStack() },
+                    onBookClick = { book ->
+                        val bookKey = book.key.removePrefix("/works/")
+                        navController.navigate("bookDetail/$bookKey")
+                    }
+                )
+            }
         }
     }
 }
@@ -86,7 +102,9 @@ fun CustomTopBar(
     onThemeToggle: () -> Unit,
     title: String = "Biblioteka książek",
     showBackButton: Boolean = false,
-    onNavigateBack: () -> Unit = {}
+    onNavigateBack: () -> Unit = {},
+    showFavoritesButton: Boolean = false,
+    onNavigateToFavorites: () -> Unit = {}
 ) {
     TopAppBar(
         title = {
@@ -106,6 +124,14 @@ fun CustomTopBar(
             }
         },
         actions = {
+            if (showFavoritesButton) {
+                IconButton(onClick = onNavigateToFavorites) {
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = "Ulubione"
+                    )
+                }
+            }
             IconButton(onClick = onThemeToggle) {
                 Icon(
                     imageVector = if (isDarkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
@@ -130,7 +156,8 @@ fun HomeScreen(
     viewModel: BookViewModel = viewModel(),
     isDarkTheme: Boolean,
     onThemeToggle: () -> Unit,
-    onBookClick: (Book) -> Unit
+    onBookClick: (Book) -> Unit,
+    onNavigateToFavorites: () -> Unit
 ) {
     val books by viewModel.books.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -140,7 +167,9 @@ fun HomeScreen(
         topBar = {
             CustomTopBar(
                 isDarkTheme = isDarkTheme,
-                onThemeToggle = onThemeToggle
+                onThemeToggle = onThemeToggle,
+                showFavoritesButton = true,
+                onNavigateToFavorites = onNavigateToFavorites
             )
         }
     ) { padding ->
@@ -162,17 +191,46 @@ fun HomeScreen(
                         .padding(padding),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        ),
+                        elevation = CardDefaults.cardElevation(8.dp)
                     ) {
-                        Text(
-                            text = "Błąd: $errorMessage",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Button(onClick = { viewModel.loadBooks() }) {
-                            Text("Spróbuj ponownie")
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                text = "Ups! Coś poszło nie tak",
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                text = errorMessage ?: "Nieznany błąd",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Button(
+                                onClick = { viewModel.loadBooks() },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Text("Spróbuj ponownie")
+                            }
                         }
                     }
                 }
