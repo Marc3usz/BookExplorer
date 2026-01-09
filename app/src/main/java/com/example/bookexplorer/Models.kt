@@ -67,3 +67,36 @@ data class Author(
     @SerializedName("name")
     val name: String
 )
+
+data class SearchResponse(
+    @SerializedName("numFound") val numFound: Int,
+    @SerializedName("start") val start: Int,
+    @SerializedName("numFoundExact") val numFoundExact: Boolean,
+    @SerializedName("num_found") val numFoundAlt: Int,
+    @SerializedName("docs") val docs: List<SearchDoc>
+)
+
+data class SearchDoc(
+    @SerializedName("key") val key: String?,
+    @SerializedName("title") val title: String?,
+    @SerializedName("author_key") val authorKey: List<String>?,
+    @SerializedName("author_name") val authorName: List<String>?,
+    @SerializedName("cover_i") val coverId: Int?,
+    @SerializedName("cover_edition_key") val coverEditionKey: String?,
+    @SerializedName("edition_count") val editionCount: Int?,
+    @SerializedName("first_publish_year") val firstPublishYear: Int?,
+    @SerializedName("has_fulltext") val hasFulltext: Boolean?,
+    @SerializedName("language") val language: List<String>?,
+    @SerializedName("ebook_access") val ebookAccess: String?,
+    @SerializedName("public_scan_b") val publicScan: Boolean?
+) {
+    fun toBook(): Book {
+        val workKey = key ?: ""
+        return Book(
+            key = workKey,
+            title = title ?: "Bez tytułu",
+            authors = authorName?.map { name -> Author(name = name) } ?: emptyList(),
+            coverId = coverId,
+        )
+    }
+}

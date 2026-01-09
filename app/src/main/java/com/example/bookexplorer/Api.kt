@@ -16,6 +16,8 @@ interface OpenLibraryApi {
     suspend fun getFictionBookByKey(@Path("key") key: String): BookDetailed
     @GET("{key}.json")
     suspend fun getAuthorByKey(@Path("key") key: String): AuthorDetailedResolvedAuthor
+    @GET("search.json")
+    suspend fun searchBooks(@Query("q") queryString: String, @Query("limit") limit: Int = 0, @Query("offset") page: Int = 0): SearchResponse
 }
 
 object Api {

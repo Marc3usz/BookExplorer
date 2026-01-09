@@ -16,6 +16,7 @@ loggingInterceptor = "5.3.2"
 navigationCompose = "2.9.6"
 retrofit = "3.0.0"
 material3 = "1.4.0"
+foundation = "1.10.0"
 
 [libraries]
 accompanist-swiperefresh = { module = "com.google.accompanist:accompanist-swiperefresh", version.ref = "accompanistSwiperefresh" }
@@ -42,6 +43,7 @@ androidx-compose-material-icons-extended = { group = "androidx.compose.material"
 logging-interceptor = { module = "com.squareup.okhttp3:logging-interceptor", version.ref = "loggingInterceptor" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
+androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "foundation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

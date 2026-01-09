@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 
 class BookViewModel(
     private val repository: BookRepository = BookRepositoryImpl(Api.service)
@@ -23,11 +25,59 @@ class BookViewModel(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _isSearching = MutableStateFlow(false)
+    val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
+
     private var currentPage = 1
     private var canLoadMore = true
+    private var searchJob: Job? = null
 
     init {
         loadBooks()
+    }
+
+    fun onSearchQueryChange(query: String) {
+        _searchQuery.value = query
+        searchJob?.cancel()
+
+        if (query.isBlank()) {
+            loadBooks()
+        } else {
+            searchJob = viewModelScope.launch {
+                delay(500)
+                searchBooks(query)
+            }
+        }
+    }
+
+    fun clearSearch() {
+        _searchQuery.value = ""
+        loadBooks()
+    }
+
+    private fun searchBooks(query: String) {
+        viewModelScope.launch {
+            _isSearching.value = true
+            _isLoading.value = true
+            _errorMessage.value = null
+            currentPage = 1
+            canLoadMore = false
+
+            repository.searchBooks(query, limit = 20, page = 0)
+                .onSuccess { bookList ->
+                    _books.value = bookList
+                    _isLoading.value = false
+                    _isSearching.value = false
+                }
+                .onFailure { exception ->
+                    _errorMessage.value = exception.message ?: "Wystąpił błąd podczas wyszukiwania"
+                    _isLoading.value = false
+                    _isSearching.value = false
+                }
+        }
     }
 
     fun loadBooks() {
@@ -53,7 +103,7 @@ class BookViewModel(
     fun loadMoreBooks() {
         println("loadMoreBooks called - isLoadingMore: ${_isLoadingMore.value}, isLoading: ${_isLoading.value}, canLoadMore: $canLoadMore, currentPage: $currentPage")
 
-        if (_isLoadingMore.value || _isLoading.value || !canLoadMore) return
+        if (_isLoadingMore.value || _isLoading.value || !canLoadMore || _searchQuery.value.isNotBlank()) return
 
         viewModelScope.launch {
             _isLoadingMore.value = true

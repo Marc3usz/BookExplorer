@@ -7,6 +7,7 @@ interface BookRepository {
     suspend fun getFictionBooks(limit: Int = 20, page: Int = 0): Result<List<Book>>
     suspend fun getFictionBookByKey(key: String): Result<BookDetailed>
     suspend fun getAuthorByKey(key: String): Result<AuthorDetailedResolvedAuthor>
+    suspend fun searchBooks(query: String, limit: Int = 20, page: Int = 0): Result<List<Book>>
 }
 
 class BookRepositoryImpl(
@@ -40,6 +41,17 @@ class BookRepositoryImpl(
             try {
                 val response = apiService.getAuthorByKey(key)
                 Result.success(response)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    override suspend fun searchBooks(query: String, limit: Int, page: Int): Result<List<Book>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.searchBooks(query, limit, page * limit)
+                Result.success(response.docs.map { it.toBook() })
             } catch (e: Exception) {
                 Result.failure(e)
             }
