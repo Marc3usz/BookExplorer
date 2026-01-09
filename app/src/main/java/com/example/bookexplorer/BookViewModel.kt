@@ -34,6 +34,7 @@ class BookViewModel(
     private var currentPage = 1
     private var canLoadMore = true
     private var searchJob: Job? = null
+    private var isSearchMode = false
 
     init {
         loadBooks()
@@ -44,8 +45,10 @@ class BookViewModel(
         searchJob?.cancel()
 
         if (query.isBlank()) {
+            isSearchMode = false
             loadBooks()
         } else {
+            isSearchMode = true
             searchJob = viewModelScope.launch {
                 delay(500)
                 searchBooks(query)
@@ -55,6 +58,7 @@ class BookViewModel(
 
     fun clearSearch() {
         _searchQuery.value = ""
+        isSearchMode = false
         loadBooks()
     }
 
@@ -64,13 +68,14 @@ class BookViewModel(
             _isLoading.value = true
             _errorMessage.value = null
             currentPage = 1
-            canLoadMore = false
+            canLoadMore = true
 
-            repository.searchBooks(query, limit = 20, page = 0)
+            repository.searchBooks(query, limit = 20, page = 1)
                 .onSuccess { bookList ->
                     _books.value = bookList
                     _isLoading.value = false
                     _isSearching.value = false
+                    canLoadMore = bookList.isNotEmpty()
                 }
                 .onFailure { exception ->
                     _errorMessage.value = exception.message ?: "Wystąpił błąd podczas wyszukiwania"
@@ -101,16 +106,22 @@ class BookViewModel(
     }
 
     fun loadMoreBooks() {
-        println("loadMoreBooks called - isLoadingMore: ${_isLoadingMore.value}, isLoading: ${_isLoading.value}, canLoadMore: $canLoadMore, currentPage: $currentPage")
+        println("loadMoreBooks called - isLoadingMore: ${_isLoadingMore.value}, isLoading: ${_isLoading.value}, canLoadMore: $canLoadMore, currentPage: $currentPage, isSearchMode: $isSearchMode")
 
-        if (_isLoadingMore.value || _isLoading.value || !canLoadMore || _searchQuery.value.isNotBlank()) return
+        if (_isLoadingMore.value || _isLoading.value || !canLoadMore) return
 
         viewModelScope.launch {
             _isLoadingMore.value = true
             val nextPage = currentPage + 1
             println("Fetching page: $nextPage")
 
-            repository.getFictionBooks(limit = 20, page = nextPage)
+            val result = if (isSearchMode) {
+                repository.searchBooks(_searchQuery.value, limit = 20, page = nextPage)
+            } else {
+                repository.getFictionBooks(limit = 20, page = nextPage)
+            }
+
+            result
                 .onSuccess { bookList ->
                     println("Received ${bookList.size} books for page $nextPage")
                     if (bookList.isEmpty()) {
